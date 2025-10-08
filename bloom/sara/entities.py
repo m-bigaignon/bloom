@@ -1,6 +1,5 @@
 """Basic entities management."""
 
-from abc import ABC
 from collections.abc import Hashable
 from typing import TypeVar, override
 
@@ -8,7 +7,7 @@ from typing import TypeVar, override
 EntityId = TypeVar("EntityId", bound=Hashable)
 
 
-class Entity[EntityId](ABC):
+class Entity[EntityId]:
     """A basic Entity."""
 
     def __init__(self, entity_id: EntityId) -> None:
@@ -28,7 +27,7 @@ class Entity[EntityId](ABC):
         """
         if not isinstance(other, Entity):
             return False
-        return type(self) is not type(other) and self.id == other.id
+        return isinstance(other, type(self)) and self.id == other.id
 
     @override
     def __hash__(self) -> int:

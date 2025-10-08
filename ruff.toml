@@ -21,7 +21,7 @@ ignore = [
 
 dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 
-[flake8-annotations]
+[lint.flake8-annotations]
 mypy-init-return = true
 suppress-dummy-args = true
 suppress-none-returning = true
@@ -48,3 +48,8 @@ quote-style = "double"
 indent-style = "space"
 skip-magic-trailing-comma = false
 line-ending = "auto"
+
+[lint.per-file-ignores]
+"tests/*" = ["D", "PLR2004"]
+
+"__init__.py" = ["F401"]

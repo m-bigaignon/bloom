@@ -1,12 +1,11 @@
-from dataclasses import dataclass
 from datetime import date
 from typing import Self
 
 from bloom.sara.entities import Entity
+from bloom.sara.value_objects import ValueObject
 
 
-@dataclass(frozen=True)
-class OrderLine:
+class OrderLine(ValueObject):
     orderid: str
     sku: str
     qty: int
@@ -24,18 +23,18 @@ class Batch(Entity[str]):
     def available_quantity(self) -> int:
         return self._initial_quantity - sum([batch.qty for batch in self._batches])
 
-    def can_allocate(self, line: OrderLine):
+    def can_allocate(self, line: OrderLine) -> bool:
         return self.sku == line.sku and self.available_quantity >= line.qty
 
-    def allocate(self, line: OrderLine):
+    def allocate(self, line: OrderLine) -> None:
         if self.can_allocate(line):
             self._batches.add(line)
 
-    def deallocate(self, line: OrderLine):
+    def deallocate(self, line: OrderLine) -> None:
         if line in self._batches:
             self._batches.remove(line)
 
-    def __gt__(self, other: Self):
+    def __gt__(self, other: Self) -> bool:
         if self.eta is None:
             return False
         if other.eta is None:
@@ -43,14 +42,15 @@ class Batch(Entity[str]):
         return self.eta > other.eta
 
 
-class OutOfStock(Exception):
+class OutOfStockError(Exception):
     pass
 
 
 def allocate(line: OrderLine, batches: list[Batch]) -> str:
     try:
         batch = next(b for b in sorted(batches) if b.can_allocate(line))
-        batch.allocate(line)
-        return batch.id
-    except StopIteration:
-        raise OutOfStock(f"Out of stock for sku {line.sku}")
+    except StopIteration as err:
+        msg = f"Out of stock for sku {line.sku}"
+        raise OutOfStockError(msg) from err
+    batch.allocate(line)
+    return batch.id

@@ -1,2 +1,14 @@
-.benchmarks
 __pycache__/
+*.py[cod]
+
+# Mypy
+.mypy-cache/
+
+# Tests / Coverage / Benchmark reports
+htmlcov/
+.pytest_cache/
+.coverage
+.benchmarks/
+
+# Pyenv conf
+.python-version
