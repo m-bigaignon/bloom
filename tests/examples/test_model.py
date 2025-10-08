@@ -3,7 +3,7 @@ from datetime import timedelta
 
 import pytest
 
-from tests.models import Batch, OrderLine, OutOfStockError, allocate
+from tests.examples.models import Batch, OrderLine, OutOfStockError, allocate
 
 
 today = dt.datetime.now(dt.UTC).date()
@@ -51,6 +51,7 @@ def test_allocation_is_idempotent() -> None:
     batch, line = make_batch_and_line("ANGULAR-DESK", 20, 2)
     batch.allocate(line)
     batch.allocate(line)
+    assert batch.is_dirty
     assert batch.available_quantity == 18
 
 
@@ -90,5 +91,5 @@ def test_raises_out_of_stock_exception_if_cannot_allocate() -> None:
     batch = Batch("batch1", "SMALL-FORK", 10, eta=today)
     allocate(OrderLine(orderid="order1", sku="SMALL-FORK", qty=10), [batch])
 
-    with pytest.raises(OutOfStockError):  # type: ignore [misc]
+    with pytest.raises(OutOfStockError):
         allocate(OrderLine(orderid="order2", sku="SMALL-FORK", qty=1), [batch])

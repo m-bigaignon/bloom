@@ -1,7 +1,10 @@
 from datetime import date
 from typing import Self
 
+import option
+
 from bloom.sara.entities import Entity
+from bloom.sara.mixins import StateTrackingMixin, mutates
 from bloom.sara.value_objects import ValueObject
 
 
@@ -11,7 +14,7 @@ class OrderLine(ValueObject):
     qty: int
 
 
-class Batch(Entity[str]):
+class Batch(Entity[str], StateTrackingMixin):
     def __init__(self, ref: str, sku: str, qty: int, eta: date | None) -> None:
         super().__init__(ref)
         self.sku = sku
@@ -26,9 +29,12 @@ class Batch(Entity[str]):
     def can_allocate(self, line: OrderLine) -> bool:
         return self.sku == line.sku and self.available_quantity >= line.qty
 
-    def allocate(self, line: OrderLine) -> None:
+    @mutates
+    def allocate(self, line: OrderLine) -> option.Result[None, str]:
         if self.can_allocate(line):
             self._batches.add(line)
+            return option.Ok(None)
+        return option.Err("Nope.")
 
     def deallocate(self, line: OrderLine) -> None:
         if line in self._batches:
