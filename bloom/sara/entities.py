@@ -33,3 +33,7 @@ class Entity[EntityId]:
     def __hash__(self) -> int:
         """Computes a hash based on entity type and id."""
         return hash((type(self), self.id))
+
+    def __repr__(self) -> str:
+        """Returns a string representation of the entity."""
+        return f"{self.__class__!s}(id={self._id!r})"
