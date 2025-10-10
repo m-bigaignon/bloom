@@ -4,7 +4,7 @@ from collections.abc import Hashable
 from typing import TypeVar
 
 from bloom import parijata
-from bloom.sara import Entity
+from bloom.sara.entities import Entity
 
 
 AggregateId = TypeVar("AggregateId", bound=Hashable)

@@ -21,6 +21,9 @@ dev = [
   "pytest-cov>=7.0.0",
   "ruff>=0.13.2",
 ]
+sqla = [
+    "sqlalchemy>=2.0.43",
+]
 
 [tool.hatch.build.target.wheel]
 packages = ["bloom"]
