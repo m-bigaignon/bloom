@@ -4,7 +4,7 @@ from collections.abc import Sequence
 import pydantic
 
 from tests.example.domain import model
-from tests.example.service_layer.unit_of_work import AbstractBatchesUoW
+from tests.example.service_layer.unit_of_work import AbstractProductsUoW
 
 
 class InvalidSku(Exception):
@@ -24,39 +24,30 @@ class OrderLineData(pydantic.BaseModel):
     qty: int
 
 
-class FakeSession:
-    def __init__(self) -> None:
-        self.committed = False
+def add_batch(
+    data: BatchData,
+    uow: AbstractProductsUoW,
+):
+    with uow():
+        product = uow.products.get(data.sku)
+        if product is None:
+            product = model.Product(data.sku, batches=[])
+            uow.products.add(product)
 
-    def commit(self):
-        self.committed = True
-
-
-def is_valid_sku(sku: str, batches: Sequence[model.Batch]) -> bool:
-    return sku in {b.sku for b in batches}
+        product.batches.append(model.Batch(**data.model_dump()))
+        uow.commit()
 
 
 def allocate(
     line: OrderLineData,
-    uow: AbstractBatchesUoW,
-):
+    uow: AbstractProductsUoW,
+) -> str:
     new_line = model.OrderLine(**line.model_dump())
     with uow():
-        batches = uow.batches.list()
-        if not is_valid_sku(line.sku, batches):
+        product = uow.products.get(line.sku)
+        if product is None:
             raise InvalidSku
 
-        allocation = model.allocate(new_line, batches)
+        allocation = product.allocate(new_line)
         uow.commit()
         return allocation
-
-
-def add_batch(
-    data: BatchData,
-    uow: AbstractBatchesUoW,
-) -> str:
-    with uow():
-        new_batch = model.Batch(**data.model_dump())
-        uow.batches.add(new_batch)
-        uow.commit()
-        return new_batch.id

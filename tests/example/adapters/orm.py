@@ -2,7 +2,8 @@ from collections import abc
 from contextlib import contextmanager
 
 import sqlalchemy as sqla
-from sqlalchemy import orm
+from sqlalchemy import ForeignKey, orm
+from sqlalchemy.sql.functions import mode
 
 from tests.example.domain import model
 
@@ -12,16 +13,23 @@ registry = orm.registry()
 order_lines = sqla.Table(
     "order_lines",
     registry.metadata,
-    sqla.Column("id", sqla.String(255), nullable=False, primary_key=True),
+    sqla.Column("id", sqla.String(255), primary_key=True),
     sqla.Column("sku", sqla.String(255), nullable=False),
     sqla.Column("qty", sqla.Integer, nullable=False),
+)
+
+products = sqla.Table(
+    "products",
+    registry.metadata,
+    sqla.Column("id", sqla.String(255), primary_key=True),
+    sqla.Column("version", sqla.Integer, nullable=False, server_default="0"),
 )
 
 batches = sqla.Table(
     "batches",
     registry.metadata,
-    sqla.Column("id", sqla.String(255), nullable=False, primary_key=True),
-    sqla.Column("sku", sqla.String(255), nullable=False),
+    sqla.Column("id", sqla.String(255), primary_key=True),
+    sqla.Column("sku", sqla.String(255), ForeignKey("products.sku")),
     sqla.Column("eta", sqla.Date, nullable=True),
     sqla.Column("initial_quantity", sqla.Integer, nullable=False),
 )
@@ -52,6 +60,14 @@ def start_mappers() -> abc.Generator[orm.registry]:
             "_allocations": orm.relationship(
                 model.OrderLine, secondary=allocations, collection_class=set
             ),
+        },
+    )
+    registry.map_imperatively(
+        model.Product,
+        products,
+        properties={
+            "_id": products.c.id,
+            "_version": products.c.version,
         },
     )
     try:

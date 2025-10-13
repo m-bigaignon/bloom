@@ -1,17 +1,17 @@
 from datetime import date
 from typing import Self
 
-from bloom.sara.entities import Entity
+from bloom import sara
 
 
-class OrderLine(Entity[str]):
+class OrderLine(sara.Entity[str]):
     def __init__(self, orderid: str, sku: str, qty: int) -> None:
         super().__init__(orderid)
         self.sku = sku
         self.qty = qty
 
 
-class Batch(Entity[str]):
+class Batch(sara.Entity[str]):
     def __init__(self, ref: str, sku: str, qty: int, eta: date | None) -> None:
         super().__init__(ref)
         self.sku = sku
@@ -42,15 +42,20 @@ class Batch(Entity[str]):
         return self.eta > other.eta
 
 
+class Product(sara.Aggregate[str]):
+    def __init__(self, sku: str, batches: list[Batch]):
+        super().__init__(sku)
+        self.batches = batches
+
+    def allocate(self, line: OrderLine) -> str:
+        try:
+            batch = next(b for b in sorted(self.batches) if b.can_allocate(line))
+            batch.allocate(line)
+        except StopIteration as err:
+            msg = f"Out of stock for sku {line.sku}"
+            raise OutOfStockError(msg) from err
+        return batch.id
+
+
 class OutOfStockError(Exception):
     pass
-
-
-def allocate(line: OrderLine, batches: list[Batch]) -> str:
-    try:
-        batch = next(b for b in sorted(batches) if b.can_allocate(line))
-        batch.allocate(line)
-    except StopIteration as err:
-        msg = f"Out of stock for sku {line.sku}"
-        raise OutOfStockError(msg) from err
-    return batch.id

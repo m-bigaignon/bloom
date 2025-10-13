@@ -6,23 +6,25 @@ from bloom.prajnan import repositories, uow
 from tests.example.domain import model
 
 
-class AbstractBatchesUoW(uow.AbstractUnitOfWork):
-    batches: repositories.Repository[model.Batch, str]
+class AbstractProductsUoW(uow.AbstractUnitOfWork):
+    products: repositories.Repository[model.Product, str]
 
 
-class BatchesUoW(AbstractBatchesUoW, uow.AbstractSqlaUnitOfWork):
+class ProductsUoW(AbstractProductsUoW, uow.AbstractSqlaUnitOfWork):
     @override
     @contextmanager
     def __call__(self) -> Generator[Self]:
         with super().__call__() as uow:
-            self.batches = repositories.SqlaRepository(model.Batch, str, self._session)
+            self.batches = repositories.SqlaRepository(
+                model.Product, str, self._session
+            )
             yield uow
 
 
-class FakeBatchesUoW(AbstractBatchesUoW, uow.AbstractMemoryUnitOfWork):
+class FakeProductsUoW(AbstractProductsUoW, uow.AbstractMemoryUnitOfWork):
     def __init__(self) -> None:
         super().__init__()
-        self.batches = repositories.InMemoryRepository(model.Batch, str)
+        self.products = repositories.InMemoryRepository(model.Product, str)
 
     @override
     @contextmanager
