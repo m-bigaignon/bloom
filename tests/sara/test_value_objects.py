@@ -14,13 +14,13 @@ class NestedData(ValueObject):
     batches: list[Data]
 
 
-def test_value_objects_are_immutable():
+def test_value_objects_are_immutable() -> None:
     data = Data(qty=12, name="CUSHION_BLUE")
-    with pytest.raises(pydantic.ValidationError):
-        data.qty = 10
+    with pytest.raises(pydantic.ValidationError):  # type: ignore [misc]
+        data.qty = 10  # type: ignore [misc]
 
 
-def test_value_objects_have_structural_equality():
+def test_value_objects_have_structural_equality() -> None:
     data1 = Data(qty=12, name="CUSHION_BLUE")
     data2 = Data(qty=12, name="CUSHION_BLUE")
     assert data1 == data2

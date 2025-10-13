@@ -1,34 +1,35 @@
 """Repository patterns and implementations for DDD."""
 
-from abc import ABC, abstractmethod
-from collections.abc import Callable, Hashable
-from typing import Protocol, TypeVar, override
+import abc
+from collections.abc import Hashable
+from types import get_original_bases
+from typing import Any, Protocol, get_args, get_origin, override
 
-from bloom.parijata import Event
-from bloom.sara import Aggregate, Entity
+from sqlalchemy import delete, orm, select
 
-
-EntityIdT = TypeVar("EntityIdT", bound=Hashable)
-T = TypeVar("T", bound="Entity[Hashable]")
-A = TypeVar("A", bound="Aggregate[Hashable]")
+from bloom.sara import Entity
 
 
-class Repository[T: Entity[Hashable]](Protocol):
-    """Protocol defining the repository interface for entities.
+class Repository[T: Entity[Any], E: Hashable](Protocol):
+    """Base abstract class defining the repository interface for entities.
 
     Repositories provide an abstraction over data persistence,
     allowing domain logic to remain independent of infrastructure concerns.
+
+    Type Parameters:
+        T: The entity type this repository manages (must have id: EntityIdT)
     """
 
+    @abc.abstractmethod
     def add(self, entity: T) -> None:
         """Add a new entity to the repository.
 
         Args:
             entity: The entity to add.
         """
-        ...
 
-    def get(self, entity_id: Hashable) -> T | None:
+    @abc.abstractmethod
+    def get(self, entity_id: E) -> T | None:
         """Retrieve an entity by its ID.
 
         Args:
@@ -37,62 +38,72 @@ class Repository[T: Entity[Hashable]](Protocol):
         Returns:
             The entity if found, None otherwise.
         """
-        ...
 
-    def remove(self, entity_id: Hashable) -> None:
+    @abc.abstractmethod
+    def remove(self, entity_id: E) -> None:
         """Remove an entity from the repository.
 
         Args:
             entity_id: The unique identifier of the entity to remove.
         """
-        ...
 
+    @abc.abstractmethod
     def list(self) -> list[T]:
         """List all entities in the repository.
 
         Returns:
             A list of all entities.
         """
-        ...
 
 
-class AbstractRepository[T: Entity[Hashable]](ABC):
-    """Abstract base class for repository implementations.
+class BaseRepository[T: Entity[Any], E: Hashable](Repository[T, E]):
+    def __init__(self, entity_type: type[T], id_type: type[E]):
+        BaseRepository._validate_types(entity_type, id_type)
 
-    Provides common functionality and enforces the repository contract.
-    """
-
-    @abstractmethod
-    def add(self, entity: T) -> None:
-        """Add a new entity to the repository."""
-        raise NotImplementedError
-
-    @abstractmethod
-    def get(self, entity_id: Hashable) -> T | None:
-        """Retrieve an entity by its ID."""
-        raise NotImplementedError
-
-    @abstractmethod
-    def remove(self, entity_id: Hashable) -> None:
-        """Remove an entity from the repository."""
-        raise NotImplementedError
-
-    @abstractmethod
-    def list(self) -> list[T]:
-        """List all entities in the repository."""
-        raise NotImplementedError
+    @classmethod
+    def _validate_types(cls, entity_type: type[T], id_type: type[E]) -> None:
+        if get_origin(entity_type) is Entity:
+            base = entity_type
+            args = get_args(base)
+            if len(args) == 0 or args[0] is not id_type:
+                msg = "A1"
+                raise TypeError(msg)
+        else:
+            type_ = (
+                get_origin(entity_type)
+                if get_origin(entity_type) is not None
+                else entity_type
+            )
+            bases = get_original_bases(type_)
+            for base in bases:
+                cls._validate_types(base, id_type)
 
 
-class InMemoryRepository[T: Entity[Hashable]](AbstractRepository[T]):
+class InMemoryRepository[T: Entity[Any], E: Hashable](BaseRepository[T, E]):
     """In-memory repository implementation for testing and prototyping.
 
     Stores entities in a dictionary keyed by their ID.
     Not suitable for production use, but ideal for unit tests and rapid prototyping.
+
+    Type Parameters:
+        T: The entity type this repository manages
+        E: The id type of the entity type
+
+    Example:
+        >>> class Product(Entity[int]):
+        ...     pass
+        >>> repo = InMemoryRepository(Product, int)
+        >>> product = Product(123)
+        >>> repo.add(product)
+        >>> found = repo.get(123)
+
+        >>> repo = InMemoryRepository(Product, str)  # ✗ Error: Product.id is int, not str
     """
 
-    def __init__(self) -> None:
+    def __init__(self, entity_type: type[T], id_type: type[E]):
         """Initialize an empty in-memory repository."""
-        self._entities: dict[Hashable, T] = {}
+        super().__init__(entity_type, id_type)
+        self._entities: dict[E, T] = {}
 
     @override
     def add(self, entity: T) -> None:
@@ -100,12 +111,12 @@ class InMemoryRepository[T: Entity[Hashable]](AbstractRepository[T]):
         self._entities[entity.id] = entity
 
     @override
-    def get(self, entity_id: Hashable) -> T | None:
+    def get(self, entity_id: E) -> T | None:
         """Retrieve an entity by its ID from the in-memory store."""
         return self._entities.get(entity_id)
 
     @override
-    def remove(self, entity_id: Hashable) -> None:
+    def remove(self, entity_id: E) -> None:
         """Remove an entity from the in-memory store."""
         self._entities.pop(entity_id, None)
 
@@ -115,72 +126,26 @@ class InMemoryRepository[T: Entity[Hashable]](AbstractRepository[T]):
         return list(self._entities.values())
 
 
-class EventPublishingRepository[A: Aggregate[Hashable]]:
-    """Decorator that publishes domain events from aggregates.
+class SqlaRepository[T: Entity[Any], E: Hashable](BaseRepository[T, E]):
+    def __init__(self, entity_type: type[T], id_type: type[E], session: orm.Session):
+        super().__init__(entity_type, id_type)
+        self._model = entity_type
+        self._session = session
 
-    Wraps a repository and publishes any pending events from aggregates
-    after they are added to the repository. This ensures that domain events
-    are handled as part of the persistence transaction.
+    @override
+    def add(self, entity: T) -> None:
+        self._session.add(entity)
 
-    Example:
-        >>> base_repo = InMemoryRepository[MyAggregate]()
-        >>> repo = EventPublishingRepository(base_repo, event_bus.publish)
-        >>> aggregate.raise_event(SomethingHappened())
-        >>> repo.add(aggregate)  # Events are published automatically
-    """
+    @override
+    def get(self, entity_id: E) -> T | None:
+        return self._session.scalar(
+            select(self._model).where(self._model.id == entity_id)
+        )
 
-    def __init__(
-        self,
-        repository: Repository[A],
-        publish_event: Callable[[Event[Hashable]], None],
-    ) -> None:
-        """Initialize the event-publishing repository.
+    @override
+    def remove(self, entity_id: E) -> None:
+        self._session.execute(delete(self._model).where(self._model.id == entity_id))
 
-        Args:
-            repository: The underlying repository to wrap.
-            publish_event: A callable that publishes a single event.
-        """
-        self._repository = repository
-        self._publish_event = publish_event
-
-    def add(self, entity: A) -> None:
-        """Add an aggregate and publish its pending events.
-
-        Args:
-            entity: The aggregate to add.
-        """
-        self._repository.add(entity)
-        self._publish_events(entity)
-
-    def get(self, entity_id: Hashable) -> A | None:
-        """Retrieve an aggregate by its ID.
-
-        Args:
-            entity_id: The unique identifier of the aggregate.
-
-        Returns:
-            The aggregate if found, None otherwise.
-        """
-        return self._repository.get(entity_id)
-
-    def remove(self, entity_id: Hashable) -> None:
-        """Remove an aggregate from the repository.
-
-        Args:
-            entity_id: The unique identifier of the aggregate to remove.
-        """
-        self._repository.remove(entity_id)
-
-    def list(self) -> list[A]:
-        """List all aggregates in the repository.
-
-        Returns:
-            A list of all aggregates.
-        """
-        return self._repository.list()
-
-    def _publish_events(self, aggregate: A) -> None:
-        """Publish all pending events from an aggregate."""
-        events = aggregate.flush_events()
-        for event in events:
-            self._publish_event(event)
+    @override
+    def list(self) -> list[T]:
+        return list(self._session.scalars(select(self._model)))

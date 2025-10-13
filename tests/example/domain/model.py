@@ -2,13 +2,13 @@ from datetime import date
 from typing import Self
 
 from bloom.sara.entities import Entity
-from bloom.sara.value_objects import ValueObject
 
 
-class OrderLine(ValueObject):
-    orderid: str
-    sku: str
-    qty: int
+class OrderLine(Entity[str]):
+    def __init__(self, orderid: str, sku: str, qty: int) -> None:
+        super().__init__(orderid)
+        self.sku = sku
+        self.qty = qty
 
 
 class Batch(Entity[str]):
@@ -49,8 +49,8 @@ class OutOfStockError(Exception):
 def allocate(line: OrderLine, batches: list[Batch]) -> str:
     try:
         batch = next(b for b in sorted(batches) if b.can_allocate(line))
+        batch.allocate(line)
     except StopIteration as err:
         msg = f"Out of stock for sku {line.sku}"
         raise OutOfStockError(msg) from err
-    batch.allocate(line)
     return batch.id

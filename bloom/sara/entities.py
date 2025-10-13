@@ -10,6 +10,8 @@ EntityId = TypeVar("EntityId", bound=Hashable)
 class Entity[EntityId]:
     """A basic Entity."""
 
+    _id: EntityId
+
     def __init__(self, entity_id: EntityId) -> None:
         """Initialize a brand new entity."""
         self._id: EntityId = entity_id
@@ -34,6 +36,7 @@ class Entity[EntityId]:
         """Computes a hash based on entity type and id."""
         return hash((type(self), self.id))
 
+    @override
     def __repr__(self) -> str:
         """Returns a string representation of the entity."""
         return f"{self.__class__!s}(id={self._id!r})"
