@@ -54,6 +54,52 @@ class Repository[T: domain.Entity[Any], E: Hashable](Protocol):
         """
 
 
+class AsyncRepository[T: domain.Entity[Any], E: Hashable](Protocol):
+    """Base abstract class defining the repository interface for entities.
+
+    Repositories provide an abstraction over data persistence,
+    allowing domain logic to remain independent of infrastructure concerns.
+
+    Type Parameters:
+        T: The entity type this repository manages (must have id: EntityIdT)
+    """
+
+    @abc.abstractmethod
+    def add(self, entity: T) -> None:
+        """Add a new entity to the repository.
+
+        Args:
+            entity: The entity to add.
+        """
+
+    @abc.abstractmethod
+    async def get(self, entity_id: E) -> T | None:
+        """Retrieve an entity by its ID.
+
+        Args:
+            entity_id: The unique identifier of the entity.
+
+        Returns:
+            The entity if found, None otherwise.
+        """
+
+    @abc.abstractmethod
+    async def remove(self, entity_id: E) -> None:
+        """Remove an entity from the repository.
+
+        Args:
+            entity_id: The unique identifier of the entity to remove.
+        """
+
+    @abc.abstractmethod
+    async def list(self) -> list[T]:
+        """List all entities in the repository.
+
+        Returns:
+            A list of all entities.
+        """
+
+
 class BaseRepository[T: domain.Entity[Any], E: Hashable](Repository[T, E]):
     """Base repository class."""
 
@@ -79,3 +125,11 @@ class BaseRepository[T: domain.Entity[Any], E: Hashable](Repository[T, E]):
             bases = get_original_bases(type_)
             for base in bases:
                 cls._validate_types(base, id_type)
+
+
+class BaseAsyncRepository[T: domain.Entity[Any], E: Hashable](AsyncRepository[T, E]):
+    """Base async repository class."""
+
+    def __init__(self, entity_type: type[T], id_type: type[E]):
+        """Construct a basic repository."""
+        BaseRepository._validate_types(entity_type, id_type)  # noqa: SLF001

@@ -1,11 +1,13 @@
 """Base classes for the unit of work pattern."""
 
 import abc
-from collections.abc import Generator
-from contextlib import contextmanager
+from asyncio import current_task
+from collections.abc import AsyncGenerator, Generator
+from contextlib import asynccontextmanager, contextmanager
 from typing import Self, override
 
 from sqlalchemy import orm
+from sqlalchemy.ext import asyncio
 
 
 class AbstractUnitOfWork(abc.ABC):
@@ -69,4 +71,71 @@ class AbstractMemoryUnitOfWork(AbstractUnitOfWork, abc.ABC):
 
     @override
     def rollback(self) -> None:
+        pass
+
+
+class AbstractAsyncUnitOfWork(abc.ABC):
+    """Base class for any Unit of Work."""
+
+    @asynccontextmanager
+    async def __call__(self) -> AsyncGenerator[Self]:
+        """Start the unit of work context manager."""
+        try:
+            yield self
+        except Exception:
+            await self.rollback()
+            raise
+
+    @abc.abstractmethod
+    async def commit(self) -> None:
+        """Commits changes in this unit of work."""
+
+    @abc.abstractmethod
+    async def rollback(self) -> None:
+        """Rolls back the changes for this unit of work."""
+
+
+class AbstractAsyncSqlaUnitOfWork(AbstractAsyncUnitOfWork, abc.ABC):
+    """An abstract SQLAlchemy-adapted unit of work."""
+
+    def __init__(
+        self, session_factory: asyncio.async_sessionmaker[asyncio.AsyncSession]
+    ):
+        """Create a new unit of work."""
+        self._session_factory = asyncio.async_scoped_session(
+            session_factory, current_task
+        )
+
+    @override
+    @asynccontextmanager
+    async def __call__(self) -> AsyncGenerator[Self]:
+        self._session = self._session_factory()
+        async with super().__call__() as uow:
+            try:
+                yield uow
+            finally:
+                await self._session_factory.remove()
+
+    @override
+    async def commit(self) -> None:
+        await self._session.commit()
+
+    @override
+    async def rollback(self) -> None:
+        await self._session.rollback()
+
+
+class AbstractAsyncMemoryUnitOfWork(AbstractAsyncUnitOfWork, abc.ABC):
+    """An abstract in-memory unit of work."""
+
+    def __init__(self) -> None:
+        """Create a new unit of work."""
+        self.committed = False
+
+    @override
+    async def commit(self) -> None:
+        self.committed = True
+
+    @override
+    async def rollback(self) -> None:
         pass
