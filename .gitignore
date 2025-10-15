@@ -13,3 +13,6 @@ htmlcov/
 
 # Pyenv conf
 .python-version
+
+
+*.db

@@ -1,17 +1,16 @@
 from datetime import date
 from typing import Self
 
-from bloom import sara
+from bloom import domain
 
 
-class OrderLine(sara.Entity[str]):
-    def __init__(self, orderid: str, sku: str, qty: int) -> None:
-        super().__init__(orderid)
-        self.sku = sku
-        self.qty = qty
+class OrderLine(domain.ValueObject):
+    orderid: str
+    sku: str
+    qty: int
 
 
-class Batch(sara.Entity[str]):
+class Batch(domain.Entity[str]):
     def __init__(self, ref: str, sku: str, qty: int, eta: date | None) -> None:
         super().__init__(ref)
         self.sku = sku
@@ -42,7 +41,7 @@ class Batch(sara.Entity[str]):
         return self.eta > other.eta
 
 
-class Product(sara.Aggregate[str]):
+class Product(domain.Aggregate[str]):
     def __init__(self, sku: str, batches: list[Batch]):
         super().__init__(sku)
         self.batches = batches

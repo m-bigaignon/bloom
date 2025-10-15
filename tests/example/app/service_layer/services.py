@@ -1,13 +1,12 @@
 import datetime as dt
-from collections.abc import Sequence
 
 import pydantic
 
-from tests.example.domain import model
-from tests.example.service_layer.unit_of_work import AbstractProductsUoW
+from tests.example.app.domain import model
+from tests.example.app.service_layer.unit_of_work import AbstractProductsUoW
 
 
-class InvalidSku(Exception):
+class InvalidSkuError(Exception):
     pass
 
 
@@ -27,7 +26,7 @@ class OrderLineData(pydantic.BaseModel):
 def add_batch(
     data: BatchData,
     uow: AbstractProductsUoW,
-):
+) -> None:
     with uow():
         product = uow.products.get(data.sku)
         if product is None:
@@ -35,6 +34,7 @@ def add_batch(
             uow.products.add(product)
 
         product.batches.append(model.Batch(**data.model_dump()))
+
         uow.commit()
 
 
@@ -46,7 +46,7 @@ def allocate(
     with uow():
         product = uow.products.get(line.sku)
         if product is None:
-            raise InvalidSku
+            raise InvalidSkuError
 
         allocation = product.allocate(new_line)
         uow.commit()

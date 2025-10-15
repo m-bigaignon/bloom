@@ -4,9 +4,9 @@ import datetime as dt
 
 import pytest
 
-from bloom.prajnan import InMemoryRepository
-from bloom.sara.entities import Entity
-from tests.example.domain.model import Batch, OrderLine
+from bloom.domain import Entity
+from bloom.repositories import InMemoryRepository
+from tests.example.app.domain.model import Batch, OrderLine
 
 
 today = dt.datetime.now(dt.UTC).date()

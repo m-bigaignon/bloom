@@ -20,7 +20,7 @@ def random_orderid(name: int | str = "") -> str:
     return f"order-{name}-{random_suffix()}"
 
 
-def test_happy_path_returns_201(client: TestClient):
+def test_happy_path_returns_201(client: TestClient) -> None:
     sku, othersku = random_sku(), random_sku("other")
     earlybatch = random_batchref(1)
     laterbatch = random_batchref(2)
@@ -50,7 +50,7 @@ def test_happy_path_returns_201(client: TestClient):
     assert response.status_code == 201
 
 
-def test_unhappy_path_returns_400(client: TestClient):
+def test_unhappy_path_returns_400(client: TestClient) -> None:
     unknown_sku, orderid = random_sku(), random_orderid()
     data = {"orderid": orderid, "sku": unknown_sku, "qty": 20}
     response = client.post(

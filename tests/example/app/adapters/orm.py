@@ -3,9 +3,8 @@ from contextlib import contextmanager
 
 import sqlalchemy as sqla
 from sqlalchemy import ForeignKey, orm
-from sqlalchemy.sql.functions import mode
 
-from tests.example.domain import model
+from tests.example.app.domain import model
 
 
 registry = orm.registry()
@@ -13,7 +12,8 @@ registry = orm.registry()
 order_lines = sqla.Table(
     "order_lines",
     registry.metadata,
-    sqla.Column("id", sqla.String(255), primary_key=True),
+    sqla.Column("id", sqla.Integer, primary_key=True, autoincrement=True),
+    sqla.Column("orderid", sqla.String(255), nullable=False),
     sqla.Column("sku", sqla.String(255), nullable=False),
     sqla.Column("qty", sqla.Integer, nullable=False),
 )
@@ -29,7 +29,7 @@ batches = sqla.Table(
     "batches",
     registry.metadata,
     sqla.Column("id", sqla.String(255), primary_key=True),
-    sqla.Column("sku", sqla.String(255), ForeignKey("products.sku")),
+    sqla.Column("sku", sqla.String(255), ForeignKey("products.id")),
     sqla.Column("eta", sqla.Date, nullable=True),
     sqla.Column("initial_quantity", sqla.Integer, nullable=False),
 )
@@ -47,9 +47,6 @@ def start_mappers() -> abc.Generator[orm.registry]:
     registry.map_imperatively(
         model.OrderLine,
         order_lines,
-        properties={
-            "_id": order_lines.c.id,
-        },
     )
     registry.map_imperatively(
         model.Batch,
@@ -68,6 +65,7 @@ def start_mappers() -> abc.Generator[orm.registry]:
         properties={
             "_id": products.c.id,
             "_version": products.c.version,
+            "batches": orm.relationship(model.Batch),
         },
     )
     try:

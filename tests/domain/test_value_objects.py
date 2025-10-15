@@ -1,7 +1,6 @@
-import pydantic
 import pytest
 
-from bloom.sara.value_objects import ValueObject
+from bloom.domain import ValueObject
 
 
 class Data(ValueObject):
@@ -9,15 +8,10 @@ class Data(ValueObject):
     name: str
 
 
-class NestedData(ValueObject):
-    sku: str
-    batches: list[Data]
-
-
 def test_value_objects_are_immutable() -> None:
     data = Data(qty=12, name="CUSHION_BLUE")
-    with pytest.raises(pydantic.ValidationError):  # type: ignore [misc]
-        data.qty = 10  # type: ignore [misc]
+    with pytest.raises(AttributeError):
+        data.qty = 10
 
 
 def test_value_objects_have_structural_equality() -> None:

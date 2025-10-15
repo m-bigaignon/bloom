@@ -21,5 +21,5 @@ repos:
     rev: v1.18.2
     hooks:
       - id: mypy
-        additional_dependencies: [pydantic]
+        additional_dependencies: [pydantic, fastapi, pytest, sqlalchemy]
         args: [--strict, --ignore-missing-imports]
