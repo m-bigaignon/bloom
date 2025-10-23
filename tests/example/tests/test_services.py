@@ -1,5 +1,3 @@
-import pytest
-
 from tests.example.app.domain.errors import InvalidSkuError
 from tests.example.app.service_layer import services, unit_of_work
 
