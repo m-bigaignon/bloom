@@ -3,6 +3,7 @@ from contextlib import contextmanager
 from typing import Self, override
 
 from bloom import repositories, service_layer
+from bloom.repositories.abc import TrackingRepository
 from tests.example.app.domain import model
 
 
@@ -15,8 +16,10 @@ class ProductsUoW(AbstractProductsUoW, service_layer.AbstractSqlaUnitOfWork):
     @contextmanager
     def __call__(self) -> Generator[Self]:
         with super().__call__() as uow:
-            self.products = repositories.SqlaRepository(
-                model.Product, str, self._session
+            self.products = TrackingRepository(
+                model.Product,
+                str,
+                repositories.SqlaRepository(model.Product, str, self._session),
             )
             yield uow
 
@@ -24,7 +27,11 @@ class ProductsUoW(AbstractProductsUoW, service_layer.AbstractSqlaUnitOfWork):
 class FakeProductsUoW(AbstractProductsUoW, service_layer.AbstractMemoryUnitOfWork):
     def __init__(self) -> None:
         super().__init__()
-        self.products = repositories.InMemoryRepository(model.Product, str)
+        self.products = TrackingRepository(
+            model.Product,
+            str,
+            repositories.InMemoryRepository(model.Product, str),
+        )
 
     @override
     @contextmanager

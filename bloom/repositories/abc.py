@@ -1,6 +1,5 @@
 """Abstract classes for repository pattern."""
 
-import abc
 from collections.abc import Hashable
 from types import get_original_bases
 from typing import Any, Protocol, get_args, get_origin
@@ -18,15 +17,14 @@ class Repository[T: domain.Entity[Any], E: Hashable](Protocol):
         T: The entity type this repository manages (must have id: EntityIdT)
     """
 
-    @abc.abstractmethod
     def add(self, entity: T) -> None:
         """Add a new entity to the repository.
 
         Args:
             entity: The entity to add.
         """
+        ...
 
-    @abc.abstractmethod
     def get(self, entity_id: E) -> T | None:
         """Retrieve an entity by its ID.
 
@@ -36,22 +34,23 @@ class Repository[T: domain.Entity[Any], E: Hashable](Protocol):
         Returns:
             The entity if found, None otherwise.
         """
+        ...
 
-    @abc.abstractmethod
     def remove(self, entity_id: E) -> None:
         """Remove an entity from the repository.
 
         Args:
             entity_id: The unique identifier of the entity to remove.
         """
+        ...
 
-    @abc.abstractmethod
     def list(self) -> list[T]:
         """List all entities in the repository.
 
         Returns:
             A list of all entities.
         """
+        ...
 
 
 class AsyncRepository[T: domain.Entity[Any], E: Hashable](Protocol):
@@ -64,15 +63,14 @@ class AsyncRepository[T: domain.Entity[Any], E: Hashable](Protocol):
         T: The entity type this repository manages (must have id: EntityIdT)
     """
 
-    @abc.abstractmethod
     def add(self, entity: T) -> None:
         """Add a new entity to the repository.
 
         Args:
             entity: The entity to add.
         """
+        ...
 
-    @abc.abstractmethod
     async def get(self, entity_id: E) -> T | None:
         """Retrieve an entity by its ID.
 
@@ -82,25 +80,26 @@ class AsyncRepository[T: domain.Entity[Any], E: Hashable](Protocol):
         Returns:
             The entity if found, None otherwise.
         """
+        ...
 
-    @abc.abstractmethod
     async def remove(self, entity_id: E) -> None:
         """Remove an entity from the repository.
 
         Args:
             entity_id: The unique identifier of the entity to remove.
         """
+        ...
 
-    @abc.abstractmethod
     async def list(self) -> list[T]:
         """List all entities in the repository.
 
         Returns:
             A list of all entities.
         """
+        ...
 
 
-class BaseRepository[T: domain.Entity[Any], E: Hashable](Repository[T, E]):
+class BaseRepository[T: domain.Entity[Any], E: Hashable]:
     """Base repository class."""
 
     def __init__(self, entity_type: type[T], id_type: type[E]):
@@ -127,9 +126,67 @@ class BaseRepository[T: domain.Entity[Any], E: Hashable](Repository[T, E]):
                 cls._validate_types(base, id_type)
 
 
-class BaseAsyncRepository[T: domain.Entity[Any], E: Hashable](AsyncRepository[T, E]):
-    """Base async repository class."""
+class TrackingRepository[T: domain.Entity[Any], E: Hashable](BaseRepository[T, E]):
+    def __init__(self, entity_type: type[T], id_type: type[E], repo: Repository[T, E]):
+        super().__init__(entity_type, id_type)
+        self._tracked: set[T] = set()
+        self._repo = repo
 
-    def __init__(self, entity_type: type[T], id_type: type[E]):
-        """Construct a basic repository."""
-        BaseRepository._validate_types(entity_type, id_type)  # noqa: SLF001
+    @property
+    def tracked(self) -> set[T]:
+        """Return the set of tracked entities.
+
+        Returns:
+            A copy of the tracked entities set.
+        """
+        return self._tracked.copy()
+
+    def add(self, entity: T) -> None:
+        self._tracked.add(entity)
+        self._repo.add(entity)
+
+    def get(self, entity_id: E) -> T | None:
+        res = self._repo.get(entity_id)
+        if res is not None:
+            self._tracked.add(res)
+        return res
+
+    def remove(self, entity_id: E) -> None:
+        return
+
+    def list(self) -> list[T]:
+        return []
+
+
+class AsyncTrackingRepository[T: domain.Entity[Any], E: Hashable](BaseRepository[T, E]):
+    def __init__(
+        self, entity_type: type[T], id_type: type[E], repo: AsyncRepository[T, E]
+    ):
+        super().__init__(entity_type, id_type)
+        self._tracked: set[T] = set()
+        self._repo = repo
+
+    @property
+    def tracked(self) -> set[T]:
+        """Return the set of tracked entities.
+
+        Returns:
+            A copy of the tracked entities set.
+        """
+        return self._tracked.copy()
+
+    def add(self, entity: T) -> None:
+        self._tracked.add(entity)
+        self._repo.add(entity)
+
+    async def get(self, entity_id: E) -> T | None:
+        res = await self._repo.get(entity_id)
+        if res is not None:
+            self._tracked.add(res)
+        return res
+
+    async def remove(self, entity_id: E) -> None:
+        return
+
+    async def list(self) -> list[T]:
+        return []

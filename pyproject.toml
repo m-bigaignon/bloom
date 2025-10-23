@@ -8,7 +8,7 @@ version = "0.1.0"
 description = ""
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = ["pydantic>=2.11.10"]
+dependencies = ["pydantic>=2.11.10", "pyrus"]
 
 [dependency-groups]
 dev = [
@@ -31,9 +31,9 @@ packages = ["bloom"]
 
 [tool.poe.tasks]
 lint = "ruff check"
-lint-fix = "lint --fix"
+lint-fix = "ruff check --fix"
 fmt = "ruff format"
-fmt-check = "fmt check"
+fmt-check = "ruff format --check"
 tc = "mypy"
 tc-report = "mypy --html-report tc-reporting"
 
@@ -93,3 +93,6 @@ init_forbid_extra = true
 init_typed = true
 warn_required_dynamic_aliases = true
 warn_untyped_fields = true
+
+[tool.uv.sources]
+pyrus = { git = "https://github.com/m-bigaignon/pyrus" }

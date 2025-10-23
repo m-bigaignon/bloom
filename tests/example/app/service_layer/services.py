@@ -1,13 +1,10 @@
 import datetime as dt
 
 import pydantic
+from pyrus import Err, Ok, Result
 
-from tests.example.app.domain import model
+from tests.example.app.domain import errors, model
 from tests.example.app.service_layer.unit_of_work import AbstractProductsUoW
-
-
-class InvalidSkuError(Exception):
-    pass
 
 
 class BatchData(pydantic.BaseModel):
@@ -41,13 +38,17 @@ def add_batch(
 def allocate(
     line: OrderLineData,
     uow: AbstractProductsUoW,
-) -> str:
+) -> Result[str, errors.InvalidSkuError | errors.OutOfStockError]:
     new_line = model.OrderLine(**line.model_dump())
     with uow():
         product = uow.products.get(line.sku)
         if product is None:
-            raise InvalidSkuError
+            return Err(errors.InvalidSkuError())
 
-        allocation = product.allocate(new_line)
-        uow.commit()
-        return allocation
+        allocation_result = product.allocate(new_line)
+        match allocation_result:
+            case Ok(allocation):
+                uow.commit()
+                return Ok(allocation)
+            case Err(e):
+                return Err(e)

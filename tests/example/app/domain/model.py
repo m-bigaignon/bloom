@@ -1,7 +1,10 @@
 from datetime import date
 from typing import Self
 
+from pyrus import Err, Ok, Result
+
 from bloom import domain
+from tests.example.app.domain import errors, events
 
 
 class OrderLine(domain.ValueObject):
@@ -46,15 +49,12 @@ class Product(domain.Aggregate[str]):
         super().__init__(sku)
         self.batches = batches
 
-    def allocate(self, line: OrderLine) -> str:
+    def allocate(self, line: OrderLine) -> Result[str, errors.OutOfStockError]:
         try:
             batch = next(b for b in sorted(self.batches) if b.can_allocate(line))
+            self.raise_event(events.Allocate(entity_id=self.id))
             batch.allocate(line)
-        except StopIteration as err:
+        except StopIteration:
             msg = f"Out of stock for sku {line.sku}"
-            raise OutOfStockError(msg) from err
-        return batch.id
-
-
-class OutOfStockError(Exception):
-    pass
+            return Err(errors.OutOfStockError(msg))
+        return Ok(batch.id)

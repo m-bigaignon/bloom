@@ -14,4 +14,5 @@ class Event[EntityId](pydantic.BaseModel):
     """Base class for domain events."""
 
     event_id: uuid.UUID = pydantic.Field(default_factory=uuid.uuid4)
+    event_type: str
     entity_id: EntityId
