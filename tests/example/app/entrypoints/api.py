@@ -16,8 +16,7 @@ engine = sqla.create_engine("sqlite:///main.db", echo=False)
 
 
 def handle_allocate(event: events.Allocate) -> None:
-    print("blbl")
-    print(event)
+    print(event)  # noqa: T201
 
 
 @asynccontextmanager
@@ -35,8 +34,10 @@ app = FastAPI(lifespan=lifespan)
 
 @app.post("/batches/", status_code=201)
 def create_batch(data: services.BatchData) -> None:
+    print("Creating batch")
     uow = unit_of_work.ProductsUoW(session_maker)
-    return services.add_batch(data, uow)
+    services.add_batch(data, uow)
+    print("Complete")
 
 
 @app.post("/allocate/", status_code=201)

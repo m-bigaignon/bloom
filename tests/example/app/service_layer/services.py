@@ -31,7 +31,6 @@ def add_batch(
             uow.products.add(product)
 
         product.batches.append(model.Batch(**data.model_dump()))
-
         uow.commit()
 
 

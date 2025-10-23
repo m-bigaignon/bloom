@@ -127,7 +127,10 @@ class BaseRepository[T: domain.Entity[Any], E: Hashable]:
 
 
 class TrackingRepository[T: domain.Entity[Any], E: Hashable](BaseRepository[T, E]):
+    """Placeholder."""
+
     def __init__(self, entity_type: type[T], id_type: type[E], repo: Repository[T, E]):
+        """Placeholder."""
         super().__init__(entity_type, id_type)
         self._tracked: set[T] = set()
         self._repo = repo
@@ -142,26 +145,33 @@ class TrackingRepository[T: domain.Entity[Any], E: Hashable](BaseRepository[T, E
         return self._tracked.copy()
 
     def add(self, entity: T) -> None:
+        """Placeholder."""
         self._tracked.add(entity)
         self._repo.add(entity)
 
     def get(self, entity_id: E) -> T | None:
+        """Placeholder."""
         res = self._repo.get(entity_id)
         if res is not None:
             self._tracked.add(res)
         return res
 
     def remove(self, entity_id: E) -> None:
-        return
+        """Placeholder."""
+        self._repo.remove(entity_id)
 
     def list(self) -> list[T]:
-        return []
+        """Placeholder."""
+        return self._repo.list()
 
 
 class AsyncTrackingRepository[T: domain.Entity[Any], E: Hashable](BaseRepository[T, E]):
+    """Placeholder."""
+
     def __init__(
         self, entity_type: type[T], id_type: type[E], repo: AsyncRepository[T, E]
     ):
+        """Placeholder."""
         super().__init__(entity_type, id_type)
         self._tracked: set[T] = set()
         self._repo = repo
@@ -176,17 +186,21 @@ class AsyncTrackingRepository[T: domain.Entity[Any], E: Hashable](BaseRepository
         return self._tracked.copy()
 
     def add(self, entity: T) -> None:
+        """Placeholder."""
         self._tracked.add(entity)
         self._repo.add(entity)
 
     async def get(self, entity_id: E) -> T | None:
+        """Placeholder."""
         res = await self._repo.get(entity_id)
         if res is not None:
             self._tracked.add(res)
         return res
 
     async def remove(self, entity_id: E) -> None:
-        return
+        """Placeholder."""
+        await self.remove(entity_id)
 
     async def list(self) -> list[T]:
-        return []
+        """Placeholder."""
+        return await self._repo.list()

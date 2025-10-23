@@ -20,17 +20,21 @@ class SqlaRepository[T: domain.Entity[Any], E: Hashable](abc.BaseRepository[T, E
         self._session = session
 
     def add(self, entity: T) -> None:
+        """Placeholder."""
         self._session.add(entity)
 
     def get(self, entity_id: E) -> T | None:
+        """Placeholder."""
         return self._session.scalar(
             select(self._model).where(self._model._id == entity_id)  # noqa: SLF001
         )
 
     def remove(self, entity_id: E) -> None:
+        """Placeholder."""
         self._session.execute(delete(self._model).where(self._model._id == entity_id))  # noqa: SLF001
 
     def list(self) -> list[T]:
+        """Placeholder."""
         return list(self._session.scalars(select(self._model)))
 
 
@@ -46,17 +50,21 @@ class AsyncSqlaRepository[T: domain.Entity[Any], E: Hashable](abc.BaseRepository
         self._session = session
 
     def add(self, entity: T) -> None:
+        """Placeholder."""
         self._session.add(entity)
 
     async def get(self, entity_id: E) -> T | None:
+        """Placeholder."""
         return await self._session.scalar(
             select(self._model).where(self._model._id == entity_id)  # noqa: SLF001
         )
 
     async def remove(self, entity_id: E) -> None:
+        """Placeholder."""
         await self._session.execute(
             delete(self._model).where(self._model._id == entity_id)  # noqa: SLF001
         )
 
     async def list(self) -> list[T]:
+        """Placeholder."""
         return list(await self._session.scalars(select(self._model)))

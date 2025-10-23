@@ -7,6 +7,7 @@ from contextlib import asynccontextmanager, contextmanager
 from typing import Any, Self, override
 
 from sqlalchemy import orm
+from sqlalchemy.ext import asyncio
 
 from bloom import domain, events
 from bloom.repositories import abc as repo_abc
@@ -41,7 +42,6 @@ class AbstractUnitOfWork(abc.ABC):
         for repo in self._repositories:
             for entity in repo.tracked:
                 if isinstance(entity, domain.Aggregate):
-                    print(entity)
                     collected_events.extend(entity.flush_events())
         return collected_events
 
@@ -141,7 +141,6 @@ class AbstractAsyncUnitOfWork(abc.ABC):
         super().__setattr__(name, value)
         if isinstance(value, repo_abc.AsyncTrackingRepository):
             if not hasattr(self, "_repositories"):
-                # Handle initialization order - create list if needed
                 super().__setattr__("_repositories", [])
             self._repositories.append(value)
 
@@ -155,7 +154,6 @@ class AbstractAsyncUnitOfWork(abc.ABC):
         for repo in self._repositories:
             for entity in repo.tracked:
                 if isinstance(entity, domain.Aggregate):
-                    print(entity)
                     collected_events.extend(entity.flush_events())
         return collected_events
 
@@ -178,7 +176,6 @@ class AbstractAsyncUnitOfWork(abc.ABC):
             await self.rollback()
             raise
         else:
-            # Collect and publish events after successful commit
             collected_events = self.collect_events()
             if collected_events:
                 self._publish_events(collected_events)
@@ -197,15 +194,12 @@ class AbstractAsyncSqlaUnitOfWork(AbstractAsyncUnitOfWork, abc.ABC):
 
     def __init__(
         self,
-        session_factory: Any,  # asyncio.async_sessionmaker[asyncio.AsyncSession]
+        session_factory: asyncio.async_sessionmaker[asyncio.AsyncSession],
         event_bus: events.HandlersRegistry | None = None,
     ):
         """Create a new unit of work."""
         super().__init__(event_bus)
-        # Import here to avoid requiring sqlalchemy
-        from sqlalchemy.ext import asyncio as sqla_asyncio
-
-        self._session_factory = sqla_asyncio.async_scoped_session(
+        self._session_factory = asyncio.async_scoped_session(
             session_factory, current_task
         )
 
