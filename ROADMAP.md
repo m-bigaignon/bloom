@@ -17,6 +17,11 @@ This document tracks planned features and enhancements for the Bloom DDD framewo
 - **Unit of Work Pattern** - Transaction management with sync and async variants
   - Memory-backed UoW
   - SQLAlchemy-backed UoW with scoped sessions
+  - Event publishing integration (sync and async)
+- **Event Bus** - Event handler registration and dispatching
+  - Synchronous event handling via `HandlersRegistry`
+  - Asynchronous event handling via `AsyncHandlersRegistry`
+  - Concurrent dispatch with error isolation
 
 ---
 
@@ -88,24 +93,34 @@ Ensure invariants across aggregate boundaries.
 
 ### 4. Event Publishing/Handling Infrastructure
 
-**Status:** Partially implemented
+**Status:** ✅ Implemented (Sync + Async)
 **Complexity:** High
-
-Events are collected but not dispatched or handled.
 
 **Requirements:**
 
-- Event bus/dispatcher implementation
-- Event handler registration and routing
-- Integration with UoW for transactional publishing
-- Async event handling support
-- Error handling and retry strategies
+- ✅ Event bus/dispatcher implementation
+- ✅ Event handler registration and routing
+- ✅ Integration with UoW for transactional publishing
+- ✅ Async event handling support
+- ✅ Error handling (concurrent dispatch with error logging)
+- ⏳ Retry strategies (future enhancement)
 
 **Current State:**
 
 - Events can be raised and collected via `Aggregate.raise_event()`
 - Events can be flushed via `Aggregate.flush_events()`
-- No publishing or handling mechanism
+- `HandlersRegistry` for synchronous event handlers
+- `AsyncHandlersRegistry` for asynchronous event handlers
+- Concurrent event dispatch with isolated error handling
+- Integration with both sync and async UoW patterns
+- Comprehensive test coverage (tests/events/test_async_event_bus.py)
+
+**Implementation Details:**
+
+- Synchronous handlers registered and dispatched via `HandlersRegistry`
+- Asynchronous handlers run concurrently via `asyncio.gather()`
+- Handler exceptions logged without stopping other handlers
+- Type-safe handler registration using generics
 
 ---
 
@@ -496,11 +511,13 @@ Optimistic Concurrency Control (#5)
 
 **Recommended Implementation Order:**
 
-1. **Event Publishing Infrastructure** (#4) - Unlock event-driven capabilities
+1. ~~**Event Publishing Infrastructure** (#4)~~ - ✅ **COMPLETED** (2025-10-24)
 2. **Domain Exception Hierarchy** (#10) - Foundation for error handling
 3. **Optimistic Concurrency Control** (#5) - Complete aggregate versioning
 4. **Specification Pattern** (#1) - Enable rich domain logic
 5. **Rich Repository Query Support** (#9) - Practical query capabilities
+6. **Outbox Pattern** (#16) - Reliable event publishing for distributed systems
+7. **Saga/Process Manager** (#8) - Now unblocked by event publishing
 
 ---
 
@@ -510,10 +527,7 @@ When implementing features from this roadmap:
 
 1. Update the status in this document
 2. Add tests to appropriate test modules
-3. Update CLAUDE.md with architectural notes
 4. Add examples to tests/example/ if applicable
 5. Document in docstrings and update main documentation
 
 ---
-
-**Last Updated:** 2025-10-16

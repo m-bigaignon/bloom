@@ -34,10 +34,8 @@ app = FastAPI(lifespan=lifespan)
 
 @app.post("/batches/", status_code=201)
 def create_batch(data: services.BatchData) -> None:
-    print("Creating batch")
     uow = unit_of_work.ProductsUoW(session_maker)
     services.add_batch(data, uow)
-    print("Complete")
 
 
 @app.post("/allocate/", status_code=201)
