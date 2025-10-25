@@ -13,21 +13,19 @@ from bloom import domain, events
 from bloom.repositories import abc as repo_abc
 
 
-class AbstractUnitOfWork(abc.ABC):
+class AbstractUOW(abc.ABC):
     """Base class for any Unit of Work."""
 
     def __init__(self, event_bus: events.HandlersRegistry | None = None) -> None:
         """Initialize the unit of work with optional event bus."""
         self._event_bus = event_bus
-        self._repositories: list[
-            repo_abc.TrackingRepository[domain.Entity[Any], Any]
-        ] = []
+        self._repositories: list[Any] = []
 
     @override
     def __setattr__(self, name: str, value: Any) -> None:
         """Intercept repository assignments to track them."""
         super().__setattr__(name, value)
-        if isinstance(value, repo_abc.TrackingRepository):
+        if isinstance(value, repo_abc.RepositoryBase):
             if not hasattr(self, "_repositories"):
                 super().__setattr__("_repositories", [])
             self._repositories.append(value)
@@ -77,7 +75,7 @@ class AbstractUnitOfWork(abc.ABC):
         """Rolls back the changes for this unit of work."""
 
 
-class AbstractSqlaUnitOfWork(AbstractUnitOfWork, abc.ABC):
+class AbstractSqlaUOW(AbstractUOW, abc.ABC):
     """An abstract SQLAlchemy-adapted unit of work."""
 
     def __init__(
@@ -108,7 +106,7 @@ class AbstractSqlaUnitOfWork(AbstractUnitOfWork, abc.ABC):
         self._session.rollback()
 
 
-class AbstractMemoryUnitOfWork(AbstractUnitOfWork, abc.ABC):
+class AbstractMemoryUOW(AbstractUOW, abc.ABC):
     """An abstract in-memory unit of work."""
 
     def __init__(self, event_bus: events.HandlersRegistry | None = None) -> None:
@@ -125,21 +123,19 @@ class AbstractMemoryUnitOfWork(AbstractUnitOfWork, abc.ABC):
         pass
 
 
-class AbstractAsyncUnitOfWork(abc.ABC):
+class AbstractAsyncUOW(abc.ABC):
     """Base class for any Unit of Work."""
 
     def __init__(self, event_bus: events.AsyncHandlersRegistry | None = None) -> None:
         """Initialize the unit of work with optional async event bus."""
         self._event_bus = event_bus
-        self._repositories: list[
-            repo_abc.AsyncTrackingRepository[domain.Entity[Any], Any]
-        ] = []
+        self._repositories: list[Any] = []
 
     @override
     def __setattr__(self, name: str, value: Any) -> None:
         """Intercept repository assignments to track them."""
         super().__setattr__(name, value)
-        if isinstance(value, repo_abc.AsyncTrackingRepository):
+        if isinstance(value, repo_abc.RepositoryBase):
             if not hasattr(self, "_repositories"):
                 super().__setattr__("_repositories", [])
             self._repositories.append(value)
@@ -189,7 +185,7 @@ class AbstractAsyncUnitOfWork(abc.ABC):
         """Rolls back the changes for this unit of work."""
 
 
-class AbstractAsyncSqlaUnitOfWork(AbstractAsyncUnitOfWork, abc.ABC):
+class AbstractAsyncSqlaUOW(AbstractAsyncUOW, abc.ABC):
     """An abstract SQLAlchemy-adapted unit of work."""
 
     def __init__(
@@ -222,7 +218,7 @@ class AbstractAsyncSqlaUnitOfWork(AbstractAsyncUnitOfWork, abc.ABC):
         await self._session.rollback()
 
 
-class AbstractAsyncMemoryUnitOfWork(AbstractAsyncUnitOfWork, abc.ABC):
+class AbstractAsyncMemoryUOW(AbstractAsyncUOW, abc.ABC):
     """An abstract in-memory unit of work."""
 
     def __init__(self, event_bus: events.AsyncHandlersRegistry | None = None) -> None:

@@ -1,113 +1,33 @@
 """Abstract classes for repository pattern."""
 
+from abc import abstractmethod
 from collections.abc import Hashable
 from types import get_original_bases
-from typing import Any, Protocol, get_args, get_origin
+from typing import Any, get_args, get_origin
 
 from bloom import domain
 
 
-class Repository[T: domain.Entity[Any], E: Hashable](Protocol):
-    """Base abstract class defining the repository interface for entities.
-
-    Repositories provide an abstraction over data persistence,
-    allowing domain logic to remain independent of infrastructure concerns.
-
-    Type Parameters:
-        T: The entity type this repository manages (must have id: EntityIdT)
-    """
-
-    def add(self, entity: T) -> None:
-        """Add a new entity to the repository.
-
-        Args:
-            entity: The entity to add.
-        """
-        ...
-
-    def get(self, entity_id: E) -> T | None:
-        """Retrieve an entity by its ID.
-
-        Args:
-            entity_id: The unique identifier of the entity.
-
-        Returns:
-            The entity if found, None otherwise.
-        """
-        ...
-
-    def remove(self, entity_id: E) -> None:
-        """Remove an entity from the repository.
-
-        Args:
-            entity_id: The unique identifier of the entity to remove.
-        """
-        ...
-
-    def list(self) -> list[T]:
-        """List all entities in the repository.
-
-        Returns:
-            A list of all entities.
-        """
-        ...
-
-
-class AsyncRepository[T: domain.Entity[Any], E: Hashable](Protocol):
-    """Base abstract class defining the repository interface for entities.
-
-    Repositories provide an abstraction over data persistence,
-    allowing domain logic to remain independent of infrastructure concerns.
-
-    Type Parameters:
-        T: The entity type this repository manages (must have id: EntityIdT)
-    """
-
-    def add(self, entity: T) -> None:
-        """Add a new entity to the repository.
-
-        Args:
-            entity: The entity to add.
-        """
-        ...
-
-    async def get(self, entity_id: E) -> T | None:
-        """Retrieve an entity by its ID.
-
-        Args:
-            entity_id: The unique identifier of the entity.
-
-        Returns:
-            The entity if found, None otherwise.
-        """
-        ...
-
-    async def remove(self, entity_id: E) -> None:
-        """Remove an entity from the repository.
-
-        Args:
-            entity_id: The unique identifier of the entity to remove.
-        """
-        ...
-
-    async def list(self) -> list[T]:
-        """List all entities in the repository.
-
-        Returns:
-            A list of all entities.
-        """
-        ...
-
-
-class BaseRepository[T: domain.Entity[Any], E: Hashable]:
+class RepositoryBase[T: domain.Entity[Any], E: Hashable]:
     """Base repository class."""
 
     def __init__(self, entity_type: type[T], id_type: type[E]):
         """Construct a basic repository."""
-        BaseRepository._validate_types(entity_type, id_type)
+        RepositoryBase.validate_types(entity_type, id_type)
+        self._tracked: set[T] = set()
+
+    @property
+    def tracked(self) -> set[T]:
+        """Return the set of tracked entities.
+
+        Returns:
+            A copy of the tracked entities set.
+        """
+        return self._tracked.copy()
 
     @classmethod
-    def _validate_types(cls, entity_type: type[T], id_type: type[E]) -> None:
+    def validate_types(cls, entity_type: type[T], id_type: type[E]) -> None:
+        """Placeholder."""
         if get_origin(entity_type) in (domain.Entity, domain.Aggregate):
             base = entity_type
             args = get_args(base)
@@ -123,84 +43,100 @@ class BaseRepository[T: domain.Entity[Any], E: Hashable]:
             assert isinstance(type_, type)
             bases = get_original_bases(type_)
             for base in bases:
-                cls._validate_types(base, id_type)
+                cls.validate_types(base, id_type)
 
 
-class TrackingRepository[T: domain.Entity[Any], E: Hashable](BaseRepository[T, E]):
-    """Placeholder."""
-
-    def __init__(self, entity_type: type[T], id_type: type[E], repo: Repository[T, E]):
-        """Placeholder."""
-        super().__init__(entity_type, id_type)
-        self._tracked: set[T] = set()
-        self._repo = repo
-
-    @property
-    def tracked(self) -> set[T]:
-        """Return the set of tracked entities.
-
-        Returns:
-            A copy of the tracked entities set.
-        """
-        return self._tracked.copy()
+class AbstractRepository[T: domain.Entity[Any], E: Hashable](RepositoryBase):
+    """Repository that tracks seen aggregates."""
 
     def add(self, entity: T) -> None:
-        """Placeholder."""
+        """Add a new entity to the repository.
+
+        Args:
+            entity: The entity to add.
+        """
         self._tracked.add(entity)
-        self._repo.add(entity)
+        self._add(entity)
 
     def get(self, entity_id: E) -> T | None:
-        """Placeholder."""
-        res = self._repo.get(entity_id)
-        if res is not None:
-            self._tracked.add(res)
-        return res
+        """Retrieve an entity by its ID.
 
-    def remove(self, entity_id: E) -> None:
-        """Placeholder."""
-        self._repo.remove(entity_id)
-
-    def list(self) -> list[T]:
-        """Placeholder."""
-        return self._repo.list()
-
-
-class AsyncTrackingRepository[T: domain.Entity[Any], E: Hashable](BaseRepository[T, E]):
-    """Placeholder."""
-
-    def __init__(
-        self, entity_type: type[T], id_type: type[E], repo: AsyncRepository[T, E]
-    ):
-        """Placeholder."""
-        super().__init__(entity_type, id_type)
-        self._tracked: set[T] = set()
-        self._repo = repo
-
-    @property
-    def tracked(self) -> set[T]:
-        """Return the set of tracked entities.
+        Args:
+            entity_id: The unique identifier of the entity.
 
         Returns:
-            A copy of the tracked entities set.
+            The entity if found, None otherwise.
         """
-        return self._tracked.copy()
+        result = self._get(entity_id)
+        if result is not None:
+            self._tracked.add(result)
+        return result
 
-    def add(self, entity: T) -> None:
-        """Placeholder."""
-        self._tracked.add(entity)
-        self._repo.add(entity)
+    def all(self) -> list[T]:
+        """List all entities in the repository.
 
-    async def get(self, entity_id: E) -> T | None:
-        """Placeholder."""
-        res = await self._repo.get(entity_id)
-        if res is not None:
-            self._tracked.add(res)
+        Returns:
+            A list of all entities.
+        """
+        res = self._all()
+        self._tracked.update(res)
         return res
 
-    async def remove(self, entity_id: E) -> None:
-        """Placeholder."""
-        await self.remove(entity_id)
+    @abstractmethod
+    def _add(self, entity: T) -> None: ...
 
-    async def list(self) -> list[T]:
-        """Placeholder."""
-        return await self._repo.list()
+    @abstractmethod
+    def _get(self, entity_id: E) -> T | None: ...
+
+    @abstractmethod
+    def _all(self) -> list[T]: ...
+
+
+class AsyncAbstractRepository[T: domain.Entity[Any], E: Hashable](RepositoryBase):
+    """Mixin to add entity tracking to async repositories.
+
+    This mixin tracks entities that are retrieved via get() or added via add().
+    It can be mixed with any AsyncRepository implementation to enable tracking.
+    """
+
+    def add(self, entity: T) -> None:
+        """Add a new entity to the repository.
+
+        Args:
+            entity: The entity to add.
+        """
+        self._tracked.add(entity)
+        self._add(entity)
+
+    async def get(self, entity_id: E) -> T | None:
+        """Retrieve an entity by its ID.
+
+        Args:
+            entity_id: The unique identifier of the entity.
+
+        Returns:
+            The entity if found, None otherwise.
+        """
+        result = await self._get(entity_id)
+        if result is not None:
+            self._tracked.add(result)
+        return result
+
+    async def all(self) -> list[T]:
+        """List all entities in the repository.
+
+        Returns:
+            A list of all entities.
+        """
+        res = await self._all()
+        self._tracked.update(res)
+        return res
+
+    @abstractmethod
+    def _add(self, entity: T) -> None: ...
+
+    @abstractmethod
+    async def _get(self, entity_id: E) -> T | None: ...
+
+    @abstractmethod
+    async def _all(self) -> list[T]: ...

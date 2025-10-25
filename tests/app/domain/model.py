@@ -4,7 +4,7 @@ from typing import Self
 from pyrus import Err, Ok, Result
 
 from bloom import domain
-from tests.example.app.domain import errors, events
+from tests.app.domain import errors, events
 
 
 class OrderLine(domain.ValueObject):

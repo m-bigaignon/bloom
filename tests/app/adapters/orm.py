@@ -4,7 +4,7 @@ from contextlib import contextmanager
 import sqlalchemy as sqla
 from sqlalchemy import ForeignKey, orm
 
-from tests.example.app.domain import model
+from tests.app.domain import model
 
 
 registry = orm.registry()
@@ -55,7 +55,10 @@ def start_mappers() -> abc.Generator[orm.registry]:
             "_id": batches.c.id,
             "_initial_quantity": batches.c.initial_quantity,
             "_allocations": orm.relationship(
-                model.OrderLine, secondary=allocations, collection_class=set
+                model.OrderLine,
+                secondary=allocations,
+                collection_class=set,
+                lazy="noload",
             ),
         },
     )
@@ -65,7 +68,7 @@ def start_mappers() -> abc.Generator[orm.registry]:
         properties={
             "_id": products.c.id,
             "_version": products.c.version,
-            "batches": orm.relationship(model.Batch),
+            "batches": orm.relationship(model.Batch, lazy="noload"),
         },
     )
     try:

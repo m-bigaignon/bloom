@@ -1,7 +1,7 @@
 import datetime as dt
 from datetime import timedelta
 
-from tests.example.app.domain.model import Batch, OrderLine
+from tests.app.domain.model import Batch, OrderLine
 
 
 today = dt.datetime.now(dt.UTC).date()

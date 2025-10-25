@@ -1,10 +1,20 @@
 """Package involving service layer implementations."""
 
 from bloom.service_layer.uow import (
-    AbstractMemoryUnitOfWork,
-    AbstractSqlaUnitOfWork,
-    AbstractUnitOfWork,
+    AbstractAsyncMemoryUOW,
+    AbstractAsyncSqlaUOW,
+    AbstractAsyncUOW,
+    AbstractMemoryUOW,
+    AbstractSqlaUOW,
+    AbstractUOW,
 )
 
 
-__all__ = ["AbstractMemoryUnitOfWork", "AbstractSqlaUnitOfWork", "AbstractUnitOfWork"]
+__all__ = [
+    "AbstractAsyncMemoryUOW",
+    "AbstractAsyncSqlaUOW",
+    "AbstractAsyncUOW",
+    "AbstractMemoryUOW",
+    "AbstractSqlaUOW",
+    "AbstractUOW",
+]

@@ -23,19 +23,13 @@ class AnotherSampleEvent(Event[int]):
 
 
 @pytest.fixture
-def anyio_backend() -> str:
-    """Use asyncio backend for tests."""
-    return "asyncio"
-
-
-@pytest.fixture
-def event_bus() -> AsyncHandlersRegistry:
+def async_event_bus() -> AsyncHandlersRegistry:
     """Create a fresh async event bus for each test."""
     return AsyncHandlersRegistry()
 
 
 async def test_register_and_handle_single_handler(
-    event_bus: AsyncHandlersRegistry,
+    async_event_bus: AsyncHandlersRegistry,
 ) -> None:
     """Test registering and handling a single async handler."""
     handled_events: list[SampleEvent] = []
@@ -43,17 +37,17 @@ async def test_register_and_handle_single_handler(
     async def handler(event: SampleEvent) -> None:
         handled_events.append(event)
 
-    event_bus.register(SampleEvent, handler)
+    async_event_bus.register(SampleEvent, handler)
     event = SampleEvent(entity_id="test-123")
 
-    await event_bus.handle(event)
+    await async_event_bus.handle(event)
 
     assert len(handled_events) == 1
     assert handled_events[0] == event
 
 
 async def test_register_multiple_handlers_for_same_event(
-    event_bus: AsyncHandlersRegistry,
+    async_event_bus: AsyncHandlersRegistry,
 ) -> None:
     """Test multiple handlers for the same event type execute concurrently."""
     handler1_called = asyncio.Event()
@@ -68,11 +62,11 @@ async def test_register_multiple_handlers_for_same_event(
         results.append("handler2")
         handler2_called.set()
 
-    event_bus.register(SampleEvent, handler1)
-    event_bus.register(SampleEvent, handler2)
+    async_event_bus.register(SampleEvent, handler1)
+    async_event_bus.register(SampleEvent, handler2)
     event = SampleEvent(entity_id="test-123")
 
-    await event_bus.handle(event)
+    await async_event_bus.handle(event)
 
     # Both handlers should have been called
     assert handler1_called.is_set()
@@ -81,7 +75,9 @@ async def test_register_multiple_handlers_for_same_event(
     assert set(results) == {"handler1", "handler2"}
 
 
-async def test_handlers_run_concurrently(event_bus: AsyncHandlersRegistry) -> None:
+async def test_handlers_run_concurrently(
+    async_event_bus: AsyncHandlersRegistry,
+) -> None:
     """Test that handlers run concurrently, not sequentially."""
     execution_order: list[str] = []
 
@@ -95,11 +91,11 @@ async def test_handlers_run_concurrently(event_bus: AsyncHandlersRegistry) -> No
         await asyncio.sleep(0.01)
         execution_order.append("fast_end")
 
-    event_bus.register(SampleEvent, slow_handler)
-    event_bus.register(SampleEvent, fast_handler)
+    async_event_bus.register(SampleEvent, slow_handler)
+    async_event_bus.register(SampleEvent, fast_handler)
     event = SampleEvent(entity_id="test-123")
 
-    await event_bus.handle(event)
+    await async_event_bus.handle(event)
 
     # If concurrent, fast handler should complete before slow handler
     # Both should start before either finishes
@@ -112,7 +108,7 @@ async def test_handlers_run_concurrently(event_bus: AsyncHandlersRegistry) -> No
 
 
 async def test_different_event_types_have_separate_handlers(
-    event_bus: AsyncHandlersRegistry,
+    async_event_bus: AsyncHandlersRegistry,
 ) -> None:
     """Test that different event types have separate handler registrations."""
     test_events: list[SampleEvent] = []
@@ -124,14 +120,14 @@ async def test_different_event_types_have_separate_handlers(
     async def another_handler(event: AnotherSampleEvent) -> None:
         another_events.append(event)
 
-    event_bus.register(SampleEvent, test_handler)
-    event_bus.register(AnotherSampleEvent, another_handler)
+    async_event_bus.register(SampleEvent, test_handler)
+    async_event_bus.register(AnotherSampleEvent, another_handler)
 
     test_event = SampleEvent(entity_id="test-123")
     another_event = AnotherSampleEvent(entity_id=456)
 
-    await event_bus.handle(test_event)
-    await event_bus.handle(another_event)
+    await async_event_bus.handle(test_event)
+    await async_event_bus.handle(another_event)
 
     assert len(test_events) == 1
     assert len(another_events) == 1
@@ -140,7 +136,7 @@ async def test_different_event_types_have_separate_handlers(
 
 
 async def test_handler_exception_does_not_stop_other_handlers(
-    event_bus: AsyncHandlersRegistry,
+    async_event_bus: AsyncHandlersRegistry,
     caplog: LogCaptureFixture,
 ) -> None:
     """Test that exception in one handler doesn't prevent others from running."""
@@ -154,12 +150,12 @@ async def test_handler_exception_does_not_stop_other_handlers(
         nonlocal successful_handler_called
         successful_handler_called = True
 
-    event_bus.register(SampleEvent, failing_handler)
-    event_bus.register(SampleEvent, successful_handler)
+    async_event_bus.register(SampleEvent, failing_handler)
+    async_event_bus.register(SampleEvent, successful_handler)
     event = SampleEvent(entity_id="test-123")
 
     with caplog.at_level(logging.ERROR):
-        await event_bus.handle(event)
+        await async_event_bus.handle(event)
 
     # Successful handler should still have been called
     assert successful_handler_called
@@ -170,7 +166,7 @@ async def test_handler_exception_does_not_stop_other_handlers(
 
 
 async def test_multiple_handler_exceptions_all_logged(
-    event_bus: AsyncHandlersRegistry,
+    async_event_bus: AsyncHandlersRegistry,
     caplog: LogCaptureFixture,
 ) -> None:
     """Test that all handler exceptions are logged."""
@@ -183,12 +179,12 @@ async def test_multiple_handler_exceptions_all_logged(
         msg = "Second failure"
         raise RuntimeError(msg)
 
-    event_bus.register(SampleEvent, failing_handler1)
-    event_bus.register(SampleEvent, failing_handler2)
+    async_event_bus.register(SampleEvent, failing_handler1)
+    async_event_bus.register(SampleEvent, failing_handler2)
     event = SampleEvent(entity_id="test-123")
 
     with caplog.at_level(logging.ERROR):
-        await event_bus.handle(event)
+        await async_event_bus.handle(event)
 
     # Both errors should be logged
     assert "First failure" in caplog.text
@@ -198,22 +194,24 @@ async def test_multiple_handler_exceptions_all_logged(
 
 
 async def test_handle_with_no_registered_handlers(
-    event_bus: AsyncHandlersRegistry,
+    async_event_bus: AsyncHandlersRegistry,
 ) -> None:
     """Test handling event with no registered handlers does nothing."""
     event = SampleEvent(entity_id="test-123")
 
     # Should not raise any exception
-    await event_bus.handle(event)
+    await async_event_bus.handle(event)
 
 
-async def test_handler_can_be_async_mock(event_bus: AsyncHandlersRegistry) -> None:
+async def test_handler_can_be_async_mock(
+    async_event_bus: AsyncHandlersRegistry,
+) -> None:
     """Test that AsyncMock can be used as a handler (useful for testing)."""
     mock_handler = AsyncMock()
 
-    event_bus.register(SampleEvent, mock_handler)
+    async_event_bus.register(SampleEvent, mock_handler)
     event = SampleEvent(entity_id="test-123")
 
-    await event_bus.handle(event)
+    await async_event_bus.handle(event)
 
     mock_handler.assert_called_once_with(event)
