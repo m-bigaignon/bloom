@@ -6,8 +6,10 @@ from pyrus import Err, Ok
 from sqlalchemy.ext import asyncio
 
 from bloom.events.event_bus import HandlersRegistry
+from bloom.redbird.sqlrepo import SQLARepo
 from tests.app.adapters import orm
 from tests.app.domain import events
+from tests.app.domain.model import Product
 from tests.app.service_layer import services, unit_of_work
 
 
@@ -47,3 +49,10 @@ async def allocate_endpoint(line: services.OrderLineData) -> dict[str, str]:
             return {"batchref": batchref}
         case Err(e):
             raise HTTPException(400, {"message": str(e)}) from e
+
+
+@app.get("/test-repo")
+async def test_repo() -> str:
+    product_repo = SQLARepo(Product)
+    print(product_repo.all().filter(batches__sku="eoa").stmt)
+    return "blbl"
